@@ -1,0 +1,76 @@
+@charset "utf-8";
+
+/* Simple CSS Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  height: 100vh;
+  display: grid;
+  justify-items: center;
+  align-items: center;
+  background-image: url('../photos/pixel-dungeon-background.svg');
+  background-size: contain;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    'hd hd'
+    'game score'
+    'ft ft';
+}
+header {
+  width: 100vw;
+  grid-area: hd;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px;
+  margin-bottom: 20px;
+  background: rgb(184, 17, 184);
+  color: white;
+  h1 {
+    justify-self: center;
+    margin: 0;
+    font-size: 35px;
+  }
+}
+#gameScreen {
+  grid-area: game;
+  background: black;
+  color: white;
+  background-image: linear-gradient(
+      rgba(128, 128, 128, 0.33),
+      rgba(128, 128, 128, 0.33)
+    ),
+    url('../photos/background.webp');
+  background-size: contain;
+  width: 800px;
+  height: 500px;
+  border-radius: 15px;
+  border: 5px solid grey;
+  margin-left: 20px;
+}
+
+#scoreWrapper {
+  grid-area: score;
+  display: flex;
+  justify-content: center;
+  width: 300px;
+  height: 500px;
+  background-image: linear-gradient(
+      rgba(69, 59, 59, 0.909),
+      rgba(69, 59, 59, 0.54)
+    ),
+    url('../photos/score-image.webp');
+  background-size: contain;
+  color: white;
+  border-radius: 15px;
+  border: 5px solid grey;
+}
+footer {
+  grid-area: ft;
+  justify-self: left;
+  color: white;
+}

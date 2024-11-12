@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Background pattern -->
+  <defs>
+    <pattern id="stoneBricks" patternUnits="userSpaceOnUse" width="32" height="32">
+      <!-- Base stone color -->
+      <rect width="32" height="32" fill="#2a2a2a"/>
+      
+      <!-- Large stone blocks -->
+      <rect x="2" y="2" width="13" height="13" fill="#3c3c3c"/>
+      <rect x="17" y="2" width="13" height="13" fill="#363636"/>
+      <rect x="2" y="17" width="13" height="13" fill="#333333"/>
+      <rect x="17" y="17" width="13" height="13" fill="#3a3a3a"/>
+      
+      <!-- Stone edges -->
+      <rect x="2" y="2" width="13" height="1" fill="#444444"/>
+      <rect x="17" y="2" width="13" height="1" fill="#444444"/>
+      <rect x="2" y="17" width="13" height="1" fill="#444444"/>
+      <rect x="17" y="17" width="13" height="1" fill="#444444"/>
+      
+      <!-- Stone highlights -->
+      <rect x="3" y="3" width="1" height="1" fill="#4a4a4a"/>
+      <rect x="18" y="3" width="1" height="1" fill="#4a4a4a"/>
+      <rect x="3" y="18" width="1" height="1" fill="#4a4a4a"/>
+      <rect x="18" y="18" width="1" height="1" fill="#4a4a4a"/>
+      
+      <!-- Moss/detail spots -->
+      <rect x="12" y="4" width="2" height="2" fill="#2d2d2d" opacity="0.5"/>
+      <rect x="27" y="12" width="2" height="2" fill="#2d2d2d" opacity="0.5"/>
+      <rect x="5" y="25" width="2" height="2" fill="#2d2d2d" opacity="0.5"/>
+    </pattern>
+  </defs>
+  
+  <!-- Apply the pattern -->
+  <rect width="64" height="64" fill="url(#stoneBricks)"/>
+  
+  <!-- Overlay vignette for depth -->
+  <rect width="64" height="64" fill="url(#stoneVignette)"/>
+  
+  <!-- Vignette gradient -->
+  <defs>
+    <radialGradient id="stoneVignette" cx="50%" cy="50%" r="50%">
+      <stop offset="70%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.3)"/>
+    </radialGradient>
+  </defs>
+</svg>
