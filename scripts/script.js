@@ -3,6 +3,7 @@
 const game = {
   canvas: null,
   ctx: null,
+  score: 0,
   isRunning: false,
   players: [],
   enemies: [],
@@ -22,7 +23,7 @@ const game = {
   // create event listeners for game
   setupEventListeners() {
     $('#toggleRunningBtn').on('click', game.toggleRunning);
-
+    $();
     window.addEventListener('keydown', (e) => {
       this.handleInput(e, true);
     });
@@ -45,6 +46,9 @@ const game = {
         break;
       case 'ArrowDown':
         // Handle down movement
+        break;
+      case 'SpaceBar':
+        // Handle spacebar action
         break;
     }
   },
@@ -78,5 +82,20 @@ const game = {
 
   draw() {},
 
-  checkForCollisions() {}
+  checkForCollisions() {},
+
+  init() {
+    this.setupEventListeners();
+  }
 };
+
+class Player {
+  constructor(
+    position = [0, 0],
+    dimensions = [100, 100],
+    velocity = [0, 0],
+    classes = 'player'
+  ) {}
+}
+
+class Enemy {}
