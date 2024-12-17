@@ -1,9 +1,14 @@
+// Canvas dimensions
+export const CANVAS_WIDTH = 800;
+export const CANVAS_HEIGHT = 600;
+
 // Game dimensions
-export const TILE_SIZE = 30;
-export const SPRITE_SIZE = 24;
+export const TILE_SIZE = 40;
+export const SPRITE_SIZE = 32;
 export const ENEMY_SIZE = 24;
 export const BOSS_SIZE = 48;
-export const PLAYER_SIZE = 24;
+export const PLAYER_SIZE = 32;
+export const PICKUP_SIZE = 16;
 
 // Game mechanics
 export const BOSS_SPEED = 1;

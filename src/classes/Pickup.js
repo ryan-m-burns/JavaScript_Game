@@ -1,9 +1,9 @@
-import { TILE_SIZE } from '../constants.js';
+import { PICKUP_SIZE } from '../constants.js';
 
 export default class Pickup {
   constructor(position, type = 'health') {
     this.position = position;
-    this.dimensions = [TILE_SIZE / 2, TILE_SIZE / 2];
+    this.dimensions = [PICKUP_SIZE / 2, PICKUP_SIZE / 2];
     this.type = type;
     this.value = type === 'health' ? 25 : 0;
   }

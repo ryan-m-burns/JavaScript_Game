@@ -1,6 +1,8 @@
 'use strict';
 
 import {
+  CANVAS_HEIGHT,
+  CANVAS_WIDTH,
   TILE_SIZE,
   SPRITE_SIZE,
   ENEMY_SIZE,
@@ -53,8 +55,8 @@ class Game {
     this.ctx = this.canvas.getContext('2d');
 
     // Set canvas size
-    this.canvas.width = 900;
-    this.canvas.height = 600;
+    this.canvas.width = CANVAS_WIDTH;
+    this.canvas.height = CANVAS_HEIGHT;
 
     // Create player
     this.player = new Player(
@@ -143,7 +145,7 @@ class Game {
 
   async loadSprites() {
     // Create colored rectangles for now - you can replace with actual sprite images
-    this.sprites.player = this.createColoredSprite('#00ff00');
+    this.sprites.player = this.createColoredSprite('#000000');
     this.sprites.enemy = this.createColoredSprite('#ff0000');
     this.sprites.wall = this.createColoredSprite('#808080');
     this.sprites.floor = this.createColoredSprite('#333333');
@@ -189,7 +191,9 @@ class Game {
         if (
           this.map[y][x] === 1 &&
           this.map[y][x - 1] === 1 &&
-          this.map[y][x + 1] === 1
+          this.map[y][x + 1] === 1 &&
+          this.map[y][x - 2] === 1 &&
+          this.map[y][x + 2] === 1
         ) {
           // If three horizontal walls in a row, remove middle one
           this.map[y][x] = 0;
@@ -197,7 +201,9 @@ class Game {
         if (
           this.map[y][x] === 1 &&
           this.map[y - 1][x] === 1 &&
-          this.map[y + 1][x] === 1
+          this.map[y + 1][x] === 1 &&
+          this.map[y - 2][x] === 1 &&
+          this.map[y + 2][x] === 1
         ) {
           // If three vertical walls in a row, remove middle one
           this.map[y][x] = 0;
@@ -394,14 +400,17 @@ class Game {
     const BAR_WIDTH = entity.dimensions[0];
     const healthPercent = entity.health / entity.initialHealth;
 
+    // Calculate position - now using the entire height of the sprite
+    const barY = y + entity.spriteSize[1] - BAR_HEIGHT; // Use spriteSize for full height
+
     // Draw background
-    this.ctx.fillStyle = '#333';
-    this.ctx.fillRect(x, y, BAR_WIDTH, BAR_HEIGHT);
+    this.ctx.fillStyle = '#555';
+    this.ctx.fillRect(x, barY, BAR_WIDTH, BAR_HEIGHT);
 
     // Draw health (green to red based on health percentage)
     const hue = healthPercent * 120;
     this.ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-    this.ctx.fillRect(x, y, BAR_WIDTH * healthPercent, BAR_HEIGHT);
+    this.ctx.fillRect(x, barY, BAR_WIDTH * healthPercent, BAR_HEIGHT);
   }
 
   draw() {
@@ -430,11 +439,7 @@ class Game {
       );
 
       // Draw health bar above enemy
-      this.drawHealthBar(
-        enemy,
-        enemy.position[0],
-        enemy.position[1] - 8 // Position 8 pixels above enemy
-      );
+      this.drawHealthBar(enemy, enemy.position[0], enemy.position[1]);
 
       // Debug: Draw collision box
       if (this.debugMode) {
@@ -457,7 +462,7 @@ class Game {
     this.drawHealthBar(
       this.player,
       this.player.position[0],
-      this.player.position[1] - 8 // Position 8 pixels above player
+      this.player.position[1]
     );
 
     // Debug: Draw player collision box
