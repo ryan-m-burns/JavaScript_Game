@@ -47,12 +47,17 @@ class Game {
     ];
     this.isPaused = false;
     this.keys = {
+      KeyA: false,
+      KeyD: false,
+      KeyW: false,
+      KeyS: false,
       ArrowLeft: false,
       ArrowRight: false,
       ArrowUp: false,
       ArrowDown: false,
       Space: false
     };
+    this.lastMovementKey = null;
     this.sprites = {
       player: null,
       enemy: null,
@@ -305,7 +310,7 @@ class Game {
       playAgainButton: () => this.resetGame(),
       quitButtonGameOver: () => this.quitGame(),
       resumeButton: () => this.resumeGame(),
-      resetButtonPause: () => this.resetGame()
+      resetButtonPause: () => this.quitGame()
     };
 
     // Add event listeners with proper binding
@@ -321,8 +326,15 @@ class Game {
 
     // Debug mode toggle
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'KeyD') {
+      if (e.code === 'KeyV') {
         this.debugMode = !this.debugMode;
+      }
+    });
+
+    // Pause game
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyP') {
+        this.togglePause();
       }
     });
   }
@@ -330,28 +342,82 @@ class Game {
   handleInput(e, isKeyDown) {
     if (this.keys.hasOwnProperty(e.code)) {
       this.keys[e.code] = isKeyDown;
-
-      // Update player direction based on last pressed key
-      if (isKeyDown) {
-        switch (e.code) {
-          case 'ArrowLeft':
-            this.player.direction = 'left';
-            break;
-          case 'ArrowRight':
-            this.player.direction = 'right';
-            break;
-          case 'ArrowUp':
-            this.player.direction = 'up';
-            break;
-          case 'ArrowDown':
-            this.player.direction = 'down';
-            break;
-          case 'Space':
-            this.player.attack(this);
-            break;
-        }
-      }
       e.preventDefault();
+    }
+
+    // Update last movement key and direction
+    const movementKeys = [
+      'KeyA',
+      'KeyD',
+      'KeyW',
+      'KeyS',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown'
+    ];
+    if (movementKeys.includes(e.code)) {
+      if (isKeyDown) {
+        this.lastMovementKey = e.code;
+      } else if (this.lastMovementKey === e.code) {
+        // Find the last pressed key that's still held down
+        this.lastMovementKey =
+          movementKeys.find((key) => this.keys[key]) || null;
+      }
+    }
+
+    // Update player direction based on last movement key
+    if (this.lastMovementKey) {
+      switch (this.lastMovementKey) {
+        case 'KeyA':
+        case 'ArrowLeft':
+          this.player.direction = 'left';
+          break;
+        case 'KeyD':
+        case 'ArrowRight':
+          this.player.direction = 'right';
+          break;
+        case 'KeyW':
+        case 'ArrowUp':
+          this.player.direction = 'up';
+          break;
+        case 'KeyS':
+        case 'ArrowDown':
+          this.player.direction = 'down';
+          break;
+      }
+    }
+
+    // Attack handling
+    if (isKeyDown && e.code === 'Space') {
+      this.player.attack(this);
+    }
+
+    // Handle splash screen shortcuts
+    if (
+      isKeyDown &&
+      this.currentScreen === 'splashScreen' &&
+      e.code === 'Enter'
+    ) {
+      this.resetGame();
+    }
+
+    // Handle pause screen shortcuts
+    if (isKeyDown && this.isPaused === true) {
+      if (e.code === 'Enter') {
+        this.resumeGame();
+      } else if (e.code === 'Escape') {
+        this.quitGame();
+      }
+    }
+
+    // Handle game over screen shortcuts
+    if (isKeyDown && this.currentScreen === 'gameOverScreen') {
+      if (e.code === 'Enter') {
+        this.resetGame();
+      } else if (e.code === 'Escape') {
+        this.quitGame();
+      }
     }
   }
 
@@ -360,10 +426,10 @@ class Game {
     let dx = 0;
     let dy = 0;
 
-    if (this.keys.ArrowLeft) dx -= PLAYER_SPEED;
-    if (this.keys.ArrowRight) dx += PLAYER_SPEED;
-    if (this.keys.ArrowUp) dy -= PLAYER_SPEED;
-    if (this.keys.ArrowDown) dy += PLAYER_SPEED;
+    if (this.keys.KeyA || this.keys.ArrowLeft) dx -= PLAYER_SPEED; // Left
+    if (this.keys.KeyD || this.keys.ArrowRight) dx += PLAYER_SPEED; // Right
+    if (this.keys.KeyW || this.keys.ArrowUp) dy -= PLAYER_SPEED; // Up
+    if (this.keys.KeyS || this.keys.ArrowDown) dy += PLAYER_SPEED; // Down
 
     // Normalize diagonal movement
     if (dx !== 0 && dy !== 0) {
@@ -933,6 +999,12 @@ class Game {
     const gameplayModal = new bootstrap.Modal(
       document.getElementById('gameplayModal')
     );
+
+    // Pause the game when showing instructions
+    if (this.isRunning) {
+      this.pauseGame();
+    }
+
     gameplayModal.show();
   }
 

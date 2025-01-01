@@ -74,6 +74,7 @@
             Your journey has come to an end, brave adventurer. Will you dare to
             venture forth once more into the depths of the dungeon?
           </p>
+          <p>Press Enter to try again or Escape to exit</p>
           <button type="button" id="playAgainButton" class="btn btn-success">
             Try Again
           </button>
@@ -97,16 +98,20 @@
               <div class="modal-body">
                 <ul>
                   <li>
+                    <strong>Pause/Resume</strong> Press P to pause and resume
+                    the game
+                  </li>
+                  <li>
                     <strong>Movement:</strong> Use W, A, S, D or arrow keys to
                     move
                   </li>
-                  <li><strong>Combat:</strong> Click to attack enemies</li>
+                  <li><strong>Combat:</strong> Space bar to attack enemies</li>
                   <li>
                     <strong>Items:</strong> Move over items to collect them
                   </li>
                   <li>
-                    <strong>Goal:</strong> Survive as long as possible while
-                    collecting treasure
+                    <strong>Goal:</strong> Kill enemies and reach the exit to
+                    advance to the next level. Survive as long as you can!
                   </li>
                 </ul>
               </div>
@@ -133,9 +138,9 @@
               <button
                 type="button"
                 id="resetButtonPause"
-                class="btn btn-warning"
+                class="btn btn-danger"
               >
-                Reset Game
+                Quit Game
               </button>
             </div>
           </div>
