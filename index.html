@@ -17,41 +17,134 @@
     <link rel="stylesheet" href="./assets/styles/style.css" />
   </head>
   <body>
-    <header>
-      <button
-        type="button"
-        id="newGameBtn"
-        class="btn btn-primary"
-        aria-label="Start new game"
-      >
-        New Game
-      </button>
-      <button
-        type="button"
-        id="toggleRunningBtn"
-        class="btn btn-success"
-        aria-label="Start new game"
-      >
-        Pause/Play Button
-      </button>
-      <h1 id="header__title">My Dungeon Crawler</h1>
-      <button
-        type="button"
-        id="gameInfoBtn"
-        class="btn btn-info"
-        aria-label="View game instructions"
-      >
-        <i class="bi bi-question-circle-fill"></i>
-      </button>
-    </header>
-    <div id="gameScreen">
-      <canvas id="gameCanvas"></canvas>
+    <div id="gameWrapper">
+      <header>
+        <button
+          type="button"
+          id="newGameBtn"
+          class="btn btn-primary"
+          aria-label="Start new game"
+        >
+          New Game
+        </button>
+        <button
+          type="button"
+          id="toggleRunningBtn"
+          class="btn btn-success"
+          aria-label="Toggle game state"
+        >
+          Pause/Play
+        </button>
+        <h1 id="header__title">My Dungeon Crawler</h1>
+        <button
+          type="button"
+          id="gameInfoBtn"
+          class="btn btn-info"
+          aria-label="View game instructions"
+        >
+          <i class="bi bi-question-circle-fill"></i>
+        </button>
+      </header>
+
+      <main>
+        <!-- Splash Screen -->
+        <div id="splashScreen" class="screen">
+          <h2>Welcome to Dungeon Crawler</h2>
+          <p>
+            Embark on an epic dungeon-crawling adventure! Navigate treacherous
+            dungeons, battle fearsome monsters, and collect valuable treasures.
+            Use your wit and skills to survive increasingly challenging levels.
+          </p>
+          <button type="button" id="startGameButton" class="btn btn-success">
+            Start Adventure
+          </button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen">
+          <div id="gameArea">
+            <!-- Game canvas/content will be inserted here -->
+          </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="screen">
+          <h2>Game Over</h2>
+          <p>
+            Your journey has come to an end, brave adventurer. Will you dare to
+            venture forth once more into the depths of the dungeon?
+          </p>
+          <button type="button" id="playAgainButton" class="btn btn-success">
+            Try Again
+          </button>
+          <button type="button" id="quitButtonGameOver" class="btn btn-danger">
+            Exit
+          </button>
+        </div>
+
+        <!-- Game Instructions Modal -->
+        <div class="modal fade" id="gameplayModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">How to Play</h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                ></button>
+              </div>
+              <div class="modal-body">
+                <ul>
+                  <li>
+                    <strong>Movement:</strong> Use W, A, S, D or arrow keys to
+                    move
+                  </li>
+                  <li><strong>Combat:</strong> Click to attack enemies</li>
+                  <li>
+                    <strong>Items:</strong> Move over items to collect them
+                  </li>
+                  <li>
+                    <strong>Goal:</strong> Survive as long as possible while
+                    collecting treasure
+                  </li>
+                </ul>
+              </div>
+              <div class="modal-footer">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Pause Screen -->
+        <div id="pauseScreen" class="screen">
+          <div class="pause-content">
+            <h2>Game Paused</h2>
+            <div class="button-group">
+              <button type="button" id="resumeButton" class="btn btn-success">
+                Resume Game
+              </button>
+              <button
+                type="button"
+                id="resetButtonPause"
+                class="btn btn-warning"
+              >
+                Reset Game
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer>&copy;2024 - Ryan Burns</footer>
     </div>
 
-    <div id="scoreWrapper">
-      <h2 id="score-title">Game Statistics</h2>
-    </div>
-    <footer>&copy;2024 - Ryan Burns</footer>
     <!-- Script Imports -->
     <script
       src="https://code.jquery.com/jquery-3.7.1.min.js"

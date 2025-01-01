@@ -16,6 +16,7 @@ import {
   GAME_STATES
 } from './constants.js';
 
+import Door from './classes/Door.js';
 import Player from './classes/Player.js';
 import Enemy from './classes/Enemy.js';
 import Pickup from './classes/Pickup.js';
@@ -35,6 +36,16 @@ class Game {
     this.projectiles = [];
     this.loopDuration = FRAME_DURATION;
     this.lastKeyFrame = null;
+    this.currentFloor = 1;
+    this.door = null;
+    this.currentScreen = 'splashScreen';
+    this.screens = [
+      'splashScreen',
+      'gameScreen',
+      'gameOverScreen',
+      'pauseScreen'
+    ];
+    this.isPaused = false;
     this.keys = {
       ArrowLeft: false,
       ArrowRight: false,
@@ -46,39 +57,47 @@ class Game {
       player: null,
       enemy: null,
       wall: null,
-      floor: null
+      floor: null,
+      door: null
     };
   }
 
   async init() {
-    this.canvas = document.getElementById('gameCanvas');
-    this.ctx = this.canvas.getContext('2d');
-
-    // Set canvas size
+    // Create and setup canvas
+    this.canvas = document.createElement('canvas');
+    this.canvas.id = 'gameCanvas';
     this.canvas.width = CANVAS_WIDTH;
     this.canvas.height = CANVAS_HEIGHT;
 
-    // Create player
+    // Add canvas to game area
+    const gameArea = document.getElementById('gameArea');
+    if (!gameArea) {
+      console.error('Game area element not found');
+      return;
+    }
+    gameArea.appendChild(this.canvas);
+
+    this.ctx = this.canvas.getContext('2d');
+
+    // Initialize game components
     this.player = new Player(
       [this.canvas.width / 2, this.canvas.height / 2],
       [PLAYER_SIZE, PLAYER_SIZE],
       [0, 0]
     );
 
-    // Add some initial enemies
-    this.addEnemies(3);
-    this.addBoss();
-    // Load sprites
     await this.loadSprites();
 
-    // Generate initial map
-    this.generateMap();
+    // Wait for DOM to be fully loaded before setting up event listeners
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () =>
+        this.setupEventListeners()
+      );
+    } else {
+      this.setupEventListeners();
+    }
 
-    // Setup event listeners
-    this.setupEventListeners();
-
-    // Start game loop
-    this.startLoop();
+    this.showScreen('splashScreen');
   }
 
   drawDebugInfo() {
@@ -149,6 +168,7 @@ class Game {
     this.sprites.enemy = this.createColoredSprite('#ff0000');
     this.sprites.wall = this.createColoredSprite('#808080');
     this.sprites.floor = this.createColoredSprite('#333333');
+    this.sprites.door = this.createColoredSprite('#ffd700');
   }
 
   createColoredSprite(color) {
@@ -162,70 +182,144 @@ class Game {
   }
 
   generateMap() {
+    // First calculate dimensions
     const mapWidth = Math.floor(this.canvas.width / TILE_SIZE);
     const mapHeight = Math.floor(this.canvas.height / TILE_SIZE);
 
+    // Safety check for canvas dimensions
+    if (!this.canvas || mapWidth <= 0 || mapHeight <= 0) {
+      console.error('Invalid canvas dimensions for map generation');
+      return;
+    }
+
+    // Initialize the map array with the correct dimensions first
     this.map = Array(mapHeight)
       .fill()
       .map(() => Array(mapWidth).fill(0));
 
-    // Get player's tile position
-    const playerTileX = Math.floor(this.player.position[0] / TILE_SIZE);
-    const playerTileY = Math.floor(this.player.position[1] / TILE_SIZE);
+    // Get player's tile position (if player exists)
+    if (this.player) {
+      const playerTileX = Math.floor(this.player.position[0] / TILE_SIZE);
+      const playerTileY = Math.floor(this.player.position[1] / TILE_SIZE);
 
-    // Add random walls, but keep a safe zone around the player
-    for (let y = 0; y < mapHeight; y++) {
-      for (let x = 0; x < mapWidth; x++) {
-        // Create a safe zone around player (3x3 area)
-        if (Math.abs(x - playerTileX) <= 1 || Math.abs(y - playerTileY) <= 1) {
-          this.map[y][x] = 0; // Keep clear
-        } else if (Math.random() < 0.2) {
-          this.map[y][x] = 1; // Add wall
+      // Ensure player position is within bounds
+      const safePlayerTileX = Math.min(Math.max(playerTileX, 1), mapWidth - 2);
+      const safePlayerTileY = Math.min(Math.max(playerTileY, 1), mapHeight - 2);
+
+      // Add random walls, but keep a safe zone around the player
+      for (let y = 0; y < mapHeight; y++) {
+        for (let x = 0; x < mapWidth; x++) {
+          // Create a safe zone around player (3x3 area)
+          if (
+            Math.abs(x - safePlayerTileX) <= 1 ||
+            Math.abs(y - safePlayerTileY) <= 1
+          ) {
+            this.map[y][x] = 0; // Keep clear
+          } else if (Math.random() < 0.2) {
+            this.map[y][x] = 1; // Add wall
+          }
+        }
+      }
+
+      // Ensure paths are at least 2 tiles wide (with bounds checking)
+      for (let y = 1; y < mapHeight - 1; y++) {
+        for (let x = 1; x < mapWidth - 1; x++) {
+          // Add bounds checking for all array accesses
+          if (
+            x >= 2 &&
+            x < mapWidth - 2 && // Ensure we have room to check neighbors
+            this.map[y][x] === 1 &&
+            this.map[y][x - 1] === 1 &&
+            this.map[y][x + 1] === 1 &&
+            this.map[y][x - 2] === 1 &&
+            this.map[y][x + 2] === 1
+          ) {
+            // If three horizontal walls in a row, remove middle one
+            this.map[y][x] = 0;
+          }
+          if (
+            y >= 2 &&
+            y < mapHeight - 2 && // Ensure we have room to check neighbors
+            this.map[y][x] === 1 &&
+            this.map[y - 1] &&
+            this.map[y - 1][x] === 1 &&
+            this.map[y + 1] &&
+            this.map[y + 1][x] === 1 &&
+            this.map[y - 2] &&
+            this.map[y - 2][x] === 1 &&
+            this.map[y + 2] &&
+            this.map[y + 2][x] === 1
+          ) {
+            // If three vertical walls in a row, remove middle one
+            this.map[y][x] = 0;
+          }
+        }
+      }
+    } else {
+      // If no player exists, just create an empty map
+      for (let y = 0; y < mapHeight; y++) {
+        for (let x = 0; x < mapWidth; x++) {
+          this.map[y][x] = 0;
         }
       }
     }
 
-    // Ensure paths are at least 2 tiles wide
-    for (let y = 1; y < mapHeight - 1; y++) {
-      for (let x = 1; x < mapWidth - 1; x++) {
-        if (
-          this.map[y][x] === 1 &&
-          this.map[y][x - 1] === 1 &&
-          this.map[y][x + 1] === 1 &&
-          this.map[y][x - 2] === 1 &&
-          this.map[y][x + 2] === 1
-        ) {
-          // If three horizontal walls in a row, remove middle one
-          this.map[y][x] = 0;
-        }
-        if (
-          this.map[y][x] === 1 &&
-          this.map[y - 1][x] === 1 &&
-          this.map[y + 1][x] === 1 &&
-          this.map[y - 2][x] === 1 &&
-          this.map[y + 2][x] === 1
-        ) {
-          // If three vertical walls in a row, remove middle one
-          this.map[y][x] = 0;
-        }
-      }
+    // Verify map integrity
+    if (!this.verifyMap()) {
+      console.error('Map verification failed, creating empty map');
+      this.map = Array(mapHeight)
+        .fill()
+        .map(() => Array(mapWidth).fill(0));
     }
   }
 
+  verifyMap() {
+    if (!Array.isArray(this.map)) return false;
+
+    const height = this.map.length;
+    if (height === 0) return false;
+
+    const width = this.map[0].length;
+    if (width === 0) return false;
+
+    // Check that all rows exist and have the correct width
+    return this.map.every(
+      (row) =>
+        Array.isArray(row) &&
+        row.length === width &&
+        row.every((cell) => cell === 0 || cell === 1)
+    );
+  }
+
   setupEventListeners() {
-    // Keyboard events
+    // Keyboard event listeners
     window.addEventListener('keydown', (e) => this.handleInput(e, true));
     window.addEventListener('keyup', (e) => this.handleInput(e, false));
 
-    // Button clicks
-    document
-      .getElementById('toggleRunningBtn')
-      .addEventListener('click', () => this.toggleRunning());
-    document
-      .getElementById('newGameBtn')
-      .addEventListener('click', () => this.resetGame());
+    // UI button listeners
+    const buttons = {
+      toggleRunningBtn: () => this.togglePause(),
+      newGameBtn: () => this.resetGame(),
+      gameInfoBtn: () => this.showGameInstructions(),
+      startGameButton: () => this.startNewGame(),
+      playAgainButton: () => this.resetGame(),
+      quitButtonGameOver: () => this.quitGame(),
+      resumeButton: () => this.resumeGame(),
+      resetButtonPause: () => this.resetGame()
+    };
 
-    // Debug mode
+    // Add event listeners with proper binding
+    Object.entries(buttons).forEach(([id, handler]) => {
+      const element = document.getElementById(id);
+      if (element) {
+        // Bind the handler to maintain correct 'this' context
+        element.addEventListener('click', handler.bind(this));
+      } else {
+        console.warn(`Button element ${id} not found`);
+      }
+    });
+
+    // Debug mode toggle
     window.addEventListener('keydown', (e) => {
       if (e.code === 'KeyD') {
         this.debugMode = !this.debugMode;
@@ -299,12 +393,26 @@ class Game {
 
     // Update player state
     this.player.update();
+
+    if (this.door && this.checkEntityCollision(this.player, this.door)) {
+      this.nextFloor();
+    }
   }
 
   updateEnemies() {
-    this.enemies.forEach((enemy) => {
-      enemy.update(this.player.position, this);
-    });
+    try {
+      this.enemies.forEach((enemy) => {
+        enemy.update(this.player.position, this);
+      });
+
+      // Check if floor is cleared after enemy updates
+      if (this.isRunning) {
+        // Only check if game is running
+        this.checkFloorCleared();
+      }
+    } catch (error) {
+      console.error('Error in updateEnemies:', error);
+    }
   }
 
   spawnHealthPickup() {
@@ -519,7 +627,61 @@ class Game {
       );
     });
 
+    // Draw door if it exists
+    if (this.door) {
+      this.ctx.drawImage(
+        this.sprites.door,
+        this.door.position[0],
+        this.door.position[1],
+        this.door.dimensions[0],
+        this.door.dimensions[1]
+      );
+    }
+
+    // Draw floor number
+    this.ctx.fillStyle = '#fff';
+    this.ctx.font = '20px Arial';
+    this.ctx.fillText(`Floor: ${this.currentFloor}`, 10, 90);
+
+    // Debug: Draw door collision box
+    if (this.debugMode && this.door) {
+      const doorBox = this.door.getCollisionBox();
+      this.ctx.strokeStyle = 'gold';
+      this.ctx.strokeRect(doorBox.x, doorBox.y, doorBox.width, doorBox.height);
+    }
+
     this.drawDebugInfo();
+  }
+
+  nextFloor() {
+    this.currentFloor++;
+    this.score += 1000; // Bonus points for completing floor
+    this.door = null;
+
+    // Heal player slightly between floors
+    this.player.health = Math.min(
+      this.player.health + 20,
+      this.player.initialHealth
+    );
+
+    // Reset player position
+    this.player.position = [this.canvas.width / 2, this.canvas.height / 2];
+
+    // Clear existing enemies and projectiles
+    this.enemies = [];
+    this.projectiles = [];
+
+    // Generate new floor
+    this.generateMap();
+
+    // Add enemies (increasing with floor number)
+    const numEnemies = 3 + Math.floor(this.currentFloor / 2);
+    this.addEnemies(numEnemies);
+
+    // Add boss every 5 floors
+    if (this.currentFloor % 5 === 0) {
+      this.addBoss();
+    }
   }
 
   animate(timestamp) {
@@ -562,24 +724,135 @@ class Game {
     }
   }
 
-  resetGame() {
-    // Reset game state
-    this.score = 0;
-    this.player.health = 100;
-    this.player.position = [this.canvas.width / 2, this.canvas.height / 2];
-    this.enemies = [];
-    this.addEnemies(3);
-    this.generateMap();
-    this.pickups = [];
-    this.projectiles = [];
+  togglePause() {
+    if (this.currentScreen !== 'gameScreen') return;
 
-    // Reset all input keys
-    for (let key in this.keys) {
-      this.keys[key] = false;
+    if (!this.isPaused) {
+      this.pauseGame();
+    } else {
+      this.resumeGame();
+    }
+  }
+
+  pauseGame() {
+    this.isPaused = true;
+    this.stopLoop();
+    document.getElementById('pauseScreen').style.display = 'block';
+  }
+
+  resumeGame() {
+    this.isPaused = false;
+    document.getElementById('pauseScreen').style.display = 'none';
+    this.startLoop();
+  }
+
+  resetGame() {
+    if (this.isPaused) {
+      document.getElementById('pauseScreen').style.display = 'none';
+      this.isPaused = false;
     }
 
+    // Ensure canvas is properly initialized
+    if (!this.canvas || !this.ctx) {
+      console.error('Canvas not initialized');
+      return;
+    }
+
+    // Reset game state
+    this.score = 0;
+
+    // Reset player position and health
+    if (!this.player) {
+      this.player = new Player(
+        [this.canvas.width / 2, this.canvas.height / 2],
+        [PLAYER_SIZE, PLAYER_SIZE],
+        [0, 0]
+      );
+    } else {
+      this.player.health = 100;
+      this.player.position = [this.canvas.width / 2, this.canvas.height / 2];
+    }
+
+    // Clear and reset game elements
+    this.enemies = [];
+    this.pickups = [];
+    this.projectiles = [];
+    this.currentFloor = 1;
+    this.door = null;
+
+    try {
+      // Generate new map with error handling
+      this.generateMap();
+
+      // Add enemies only if map generation was successful
+      if (this.map && this.map.length > 0) {
+        this.addEnemies(3);
+      } else {
+        console.error('Map generation failed');
+        return;
+      }
+    } catch (error) {
+      console.error('Error during game reset:', error);
+      return;
+    }
+
+    // Reset all input keys
+    Object.keys(this.keys).forEach((key) => {
+      this.keys[key] = false;
+    });
+
+    // Make sure we're showing the game screen
+    this.showScreen('gameScreen');
+
+    // Ensure the game loop is running
     if (!this.isRunning) {
       this.startLoop();
+    }
+  }
+
+  checkFloorCleared() {
+    if (this.enemies.length === 0 && !this.door) {
+      this.spawnDoor();
+    }
+  }
+
+  spawnDoor() {
+    try {
+      const ATTEMPTS = 100; // Maximum attempts to find valid position
+      let x, y;
+      let attempts = 0;
+
+      do {
+        // Calculate position in tile coordinates first
+        const tileX = Math.floor(Math.random() * (this.map[0].length - 2)) + 1;
+        const tileY = Math.floor(Math.random() * (this.map.length - 2)) + 1;
+
+        // Convert to pixel coordinates
+        x = tileX * TILE_SIZE;
+        y = tileY * TILE_SIZE;
+
+        attempts++;
+
+        // Check if this position is valid (not colliding with walls)
+        if (
+          !this.checkWallCollision(x, y, TILE_SIZE, TILE_SIZE) &&
+          // Ensure not too close to player
+          Math.hypot(x - this.player.position[0], y - this.player.position[1]) >
+            TILE_SIZE * 3
+        ) {
+          this.door = new Door([x, y]);
+          return; // Valid position found
+        }
+      } while (attempts < ATTEMPTS);
+
+      // If no valid position found after max attempts, place door in center of room
+      const centerX = Math.floor(this.map[0].length / 2) * TILE_SIZE;
+      const centerY = Math.floor(this.map.length / 2) * TILE_SIZE;
+      this.door = new Door([centerX, centerY]);
+    } catch (error) {
+      console.error('Error spawning door:', error);
+      // Fallback: place door in a safe default position
+      this.door = new Door([TILE_SIZE, TILE_SIZE]);
     }
   }
 
@@ -627,10 +900,51 @@ class Game {
     return collision;
   }
 
+  showScreen(screenName) {
+    // Hide all screens
+    this.screens.forEach((screen) => {
+      const element = document.getElementById(screen);
+      if (element) {
+        element.style.display = 'none';
+      }
+    });
+
+    // Show requested screen
+    const newScreen = document.getElementById(screenName);
+    if (newScreen) {
+      newScreen.style.display = 'block';
+    }
+    this.currentScreen = screenName;
+  }
+
+  startNewGame() {
+    this.resetGame();
+    this.showScreen('gameScreen');
+    this.generateMap();
+    this.startLoop();
+  }
+
+  quitGame() {
+    this.stopLoop();
+    this.showScreen('splashScreen');
+  }
+
+  showGameInstructions() {
+    const gameplayModal = new bootstrap.Modal(
+      document.getElementById('gameplayModal')
+    );
+    gameplayModal.show();
+  }
+
   gameOver() {
     this.stopLoop();
-    alert('Game Over! Score: ' + this.score);
-    this.resetGame();
+    this.showScreen('gameOverScreen');
+
+    // Update score display
+    const scoreElement = document.getElementById('scoreWrapper');
+    if (scoreElement) {
+      scoreElement.textContent = `Final Score: ${this.score}`;
+    }
   }
 }
 

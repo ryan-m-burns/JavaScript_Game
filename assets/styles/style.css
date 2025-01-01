@@ -8,22 +8,28 @@
 }
 
 body {
-  height: 100vh;
-  display: grid;
+  min-height: 100vh;
   justify-items: center;
   align-items: center;
-  background-image: url('../images/pixel-dungeon-background.svg');
-  background-size: contain;
+  background: black;
+}
+
+#gameWrapper {
+  display: grid;
   grid-template-rows: auto 1fr auto;
   grid-template-areas:
-    'hd hd'
-    'game score'
-    'ft ft';
+    'hd'
+    'game'
+    'ft';
+  height: 100vh;
+  max-width: 1400px;
+  margin: auto;
+  background-image: url('../images/pixel-dungeon-background.svg');
+  background-size: contain;
 }
 
 header {
-  width: 100vw;
-  grid-area: hd;
+  grid-area: hd hd;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -32,6 +38,12 @@ header {
   background: rgb(184, 17, 184);
   color: white;
 }
+main {
+  display: flex;
+  grid-area: game;
+  align-items: center;
+  justify-content: center;
+}
 
 header h1 {
   justify-self: center;
@@ -39,23 +51,25 @@ header h1 {
   font-size: 35px;
 }
 
-#gameScreen {
+#gameScreen,
+#splashScreen,
+#gameOverScreen {
+  display: flex;
+  text-align: center;
+  align-content: center;
   grid-area: game;
-  background: black;
+  padding: 0 100px;
   color: white;
-  background-image: linear-gradient(
-      rgba(128, 128, 128, 0.33),
-      rgba(128, 128, 128, 0.33)
-    ),
+  background-image: linear-gradient(rgba(4, 4, 4, 0.33), rgba(0, 0, 0, 0.33)),
     url('../images/background.webp');
-  background-size: contain;
+  background-size: cover;
   width: 900px;
-  height: 600px; /* Updated to match canvas height */
+  height: 600px;
   border-radius: 15px;
   border: 5px solid grey;
   margin-left: 20px;
-  position: relative; /* Added for proper canvas positioning */
-  overflow: hidden; /* Prevent canvas overflow */
+  position: relative;
+  overflow: hidden;
 }
 
 #gameCanvas {
@@ -68,31 +82,8 @@ header h1 {
   image-rendering: crisp-edges; /* Firefox */
 }
 
-#scoreWrapper {
-  grid-area: score;
-  display: flex;
-  flex-direction: column; /* Added for better score organization */
-  align-items: center;
-  width: 300px;
-  height: 600px; /* Updated to match game screen */
-  background-image: linear-gradient(
-      rgba(69, 59, 59, 0.909),
-      rgba(69, 59, 59, 0.54)
-    ),
-    url('../images/score-image.webp');
-  background-size: contain;
-  color: white;
-  border-radius: 15px;
-  border: 5px solid grey;
-  padding: 20px;
-}
-
-#score-title {
-  margin-bottom: 20px;
-}
-
 footer {
-  grid-area: ft;
+  grid-area: ft ft;
   justify-self: left;
   color: white;
   padding: 10px;
@@ -108,4 +99,28 @@ footer {
 .btn:hover {
   transform: scale(1.05);
   transition: transform 0.2s ease;
+}
+
+#pauseScreen {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 2rem;
+  border-radius: 10px;
+  text-align: center;
+  color: white;
+  z-index: 1000;
+}
+
+#pauseScreen .button-group {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+#pauseScreen h2 {
+  margin-bottom: 1.5rem;
 }
