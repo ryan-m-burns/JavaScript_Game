@@ -333,7 +333,7 @@ class Game {
 
     // Pause game
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'KeyP') {
+      if (e.code === 'KeyP' || e.code === 'Escape') {
         this.togglePause();
       }
     });
@@ -966,6 +966,14 @@ class Game {
     return collision;
   }
 
+  updateButtonVisibility(screenName) {
+    const toggleRunningBtn = document.getElementById('toggleRunningBtn');
+    if (toggleRunningBtn) {
+      toggleRunningBtn.style.display =
+        screenName === 'gameScreen' ? 'block' : 'none';
+    }
+  }
+
   showScreen(screenName) {
     // Hide all screens
     this.screens.forEach((screen) => {
@@ -981,6 +989,8 @@ class Game {
       newScreen.style.display = 'block';
     }
     this.currentScreen = screenName;
+
+    this.updateButtonVisibility(screenName);
   }
 
   startNewGame() {
@@ -1013,7 +1023,7 @@ class Game {
     this.showScreen('gameOverScreen');
 
     // Update score display
-    const scoreElement = document.getElementById('scoreWrapper');
+    const scoreElement = document.getElementById('scoreDisplay');
     if (scoreElement) {
       scoreElement.textContent = `Final Score: ${this.score}`;
     }
