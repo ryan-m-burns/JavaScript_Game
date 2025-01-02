@@ -393,6 +393,15 @@ class Game {
       this.player.attack(this);
     }
 
+    // Block handling
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+      if (isKeyDown) {
+        this.player.startBlocking();
+      } else {
+        this.player.stopBlocking();
+      }
+    }
+
     // Handle splash screen shortcuts
     if (
       isKeyDown &&
@@ -531,8 +540,7 @@ class Game {
       // Check hits
       if (projectile.isEnemy) {
         if (this.checkEntityCollision(projectile, this.player)) {
-          this.player.health -= projectile.damage;
-          if (this.player.health <= 0) {
+          if (this.player.takeDamage(projectile.damage)) {
             this.gameOver();
           }
           return false;
@@ -631,6 +639,22 @@ class Game {
       this.player.spriteSize[0],
       this.player.spriteSize[1]
     );
+
+    // Draw shield effect when blocking
+    if (this.player.isBlocking) {
+      const playerBox = this.player.getCollisionBox();
+      this.ctx.strokeStyle = '#00ffff';
+      this.ctx.lineWidth = 3;
+      this.ctx.beginPath();
+      this.ctx.arc(
+        playerBox.x + playerBox.width / 2,
+        playerBox.y + playerBox.height / 2,
+        Math.max(playerBox.width, playerBox.height) * 0.7,
+        0,
+        Math.PI * 2
+      );
+      this.ctx.stroke();
+    }
 
     // Draw player health bar
     this.drawHealthBar(

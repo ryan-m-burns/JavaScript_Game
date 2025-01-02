@@ -29,10 +29,18 @@ export default class Player {
     this.direction = 'down';
     this.isMoving = false;
     this.attackCooldown = 0;
+
+    // Shield block properties
+    this.isBlocking = false;
+    this.blockDuration = 30; // How long block can be held
+    this.blockCooldown = 0; // Current block cooldown
+    this.blockRechargeTime = 60; // Time before block can be used again
+    this.blockDamageReduction = 0.5; // 50% damage reduction while blocking
   }
 
   attack(gameState) {
-    if (this.attackCooldown <= 0) {
+    // Can't attack while blocking
+    if (this.attackCooldown <= 0 && !this.isBlocking) {
       const attackBox = this.getAttackHitbox();
       const hitboxEntity = {
         getCollisionBox() {
@@ -53,6 +61,30 @@ export default class Player {
 
       this.attackCooldown = 20;
     }
+  }
+
+  startBlocking() {
+    // Can only start blocking if not already blocking and not on cooldown
+    if (!this.isBlocking && this.blockCooldown === 0) {
+      this.isBlocking = true;
+      this.blockCooldown = this.blockDuration;
+    }
+  }
+
+  stopBlocking() {
+    if (this.isBlocking) {
+      this.isBlocking = false;
+      this.blockCooldown = this.blockRechargeTime;
+    }
+  }
+
+  takeDamage(amount) {
+    // Reduce damage if blocking
+    if (this.isBlocking) {
+      amount *= 1 - this.blockDamageReduction;
+    }
+    this.health = Math.max(0, this.health - amount);
+    return this.health <= 0;
   }
 
   getCollisionBox() {
@@ -108,16 +140,31 @@ export default class Player {
   }
 
   move(dx, dy) {
+    // Reduce movement speed while blocking
+    const currentSpeed = this.isBlocking ? PLAYER_SPEED * 0.5 : PLAYER_SPEED;
+
     if (dx !== 0 && dy !== 0) {
       dx *= 0.707; // 1/√2 for diagonal movement normalization
       dy *= 0.707;
     }
 
-    this.position[0] += dx * PLAYER_SPEED;
-    this.position[1] += dy * PLAYER_SPEED;
+    this.position[0] += dx * currentSpeed;
+    this.position[1] += dy * currentSpeed;
   }
 
   update() {
+    // Update attack cooldown
     this.attackCooldown = Math.max(0, this.attackCooldown - 1);
+
+    // Update block cooldown
+    if (this.blockCooldown > 0) {
+      this.blockCooldown--;
+
+      // If blocking duration is over, stop blocking
+      if (this.isBlocking && this.blockCooldown === 0) {
+        this.isBlocking = false;
+        this.blockCooldown = this.blockRechargeTime;
+      }
+    }
   }
 }
