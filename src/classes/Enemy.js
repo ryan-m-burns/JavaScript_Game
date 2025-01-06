@@ -1,4 +1,11 @@
-import { TILE_SIZE, SPRITE_SIZE, ENEMY_SPEED } from '../constants.js';
+import {
+  TILE_SIZE,
+  SPRITE_SIZE,
+  ENEMY_SPEED,
+  BOSS_SPEED,
+  PROJECTILE_TYPES,
+  ENEMY_TYPES
+} from '../constants.js';
 import Projectile from './Projectile.js';
 
 export default class Enemy {
@@ -7,7 +14,8 @@ export default class Enemy {
     dimensions = [TILE_SIZE, TILE_SIZE],
     velocity = [0, 0],
     health = 50,
-    classes = 'enemy'
+    type = 'normal',
+    difficultyMod = 1.0
   ) {
     this.position = position;
     this.dimensions = dimensions;
@@ -17,10 +25,21 @@ export default class Enemy {
       (SPRITE_SIZE - TILE_SIZE) / 2
     ];
     this.velocity = velocity;
-    this.classes = classes;
-    this.health = health;
+    this.type = type;
+
+    // Get base stats for enemy type
+    const typeStats = ENEMY_TYPES[type];
+
+    // Apply difficulty scaling
+    this.health = typeStats.baseHealth * difficultyMod;
     this.initialHealth = this.health;
-    this.damage = 10;
+    this.damage = typeStats.baseDamage * difficultyMod;
+    this.shootRange = typeStats.shootRange;
+    this.shootChance = typeStats.shootChance;
+    this.projectileSpeed = typeStats.projectileSpeed;
+
+    // Set speed based on enemy type
+    this.speed = type === 'boss' ? BOSS_SPEED : ENEMY_SPEED;
     this.direction = 'down';
   }
 
@@ -34,33 +53,51 @@ export default class Enemy {
   }
 
   shoot(playerPos, gameState) {
-    if (Math.random() < 0.01) {
-      // 1% chance to shoot each frame
+    if (Math.random() < this.shootChance) {
       const dx = playerPos[0] - this.position[0];
       const dy = playerPos[1] - this.position[1];
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist < 300) {
-        // Only shoot if player is within range
+      if (dist < this.shootRange) {
+        // Calculate normalized velocity
         const velocity = [dx / dist, dy / dist];
+
+        // Calculate spawn position from center of enemy
+        const spawnX = this.position[0] + this.dimensions[0] / 2;
+        const spawnY = this.position[1] + this.dimensions[1] / 2;
+
+        // Create projectile with correct type and speed
         gameState.projectiles.push(
-          new Projectile([this.position[0], this.position[1]], velocity, true)
+          new Projectile(
+            [spawnX, spawnY], // Centered position
+            velocity,
+            true, // isEnemy
+            null, // Let size be determined by type
+            this.damage, // Pass damage
+            this.projectileSpeed *
+              PROJECTILE_TYPES[this.type === 'boss' ? 'boss' : 'enemy']
+                .baseSpeed, // Adjust speed
+            this.type === 'boss' ? 'boss' : 'enemy' // Specify correct type
+          )
         );
       }
     }
   }
 
   update(playerPos, gameState) {
-    // Basic AI: Move towards player
+    // Calculate distance to player
     const dx = playerPos[0] - this.position[0];
     const dy = playerPos[1] - this.position[1];
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist > 0) {
-      this.velocity[0] = (dx / dist) * ENEMY_SPEED;
-      this.velocity[1] = (dy / dist) * ENEMY_SPEED;
+    // Boss-specific behavior
+    if (this.type === 'boss') {
+      this.updateBoss(playerPos, gameState, dx, dy, dist);
+    } else {
+      this.updateNormal(dx, dy, dist);
     }
 
+    // Update position
     this.position[0] += this.velocity[0];
     this.position[1] += this.velocity[1];
 
@@ -71,6 +108,24 @@ export default class Enemy {
       this.direction = this.velocity[1] > 0 ? 'down' : 'up';
     }
 
+    // Handle shooting
     this.shoot(playerPos, gameState);
+  }
+
+  updateNormal(dx, dy, dist) {
+    if (dist > 0) {
+      this.velocity[0] = (dx / dist) * this.speed;
+      this.velocity[1] = (dy / dist) * this.speed;
+    }
+  }
+
+  updateBoss(playerPos, gameState, dx, dy, dist) {
+    // Boss specific movement pattern
+    if (dist > 0) {
+      // Bosses move more erratically
+      const angle = Math.atan2(dy, dx) + Math.sin(Date.now() / 1000) * 0.5;
+      this.velocity[0] = Math.cos(angle) * this.speed;
+      this.velocity[1] = Math.sin(angle) * this.speed;
+    }
   }
 }

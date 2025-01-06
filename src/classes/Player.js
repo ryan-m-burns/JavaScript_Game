@@ -32,10 +32,10 @@ export default class Player {
 
     // Shield block properties
     this.isBlocking = false;
-    this.blockDuration = 30; // How long block can be held
-    this.blockCooldown = 0; // Current block cooldown
-    this.blockRechargeTime = 60; // Time before block can be used again
-    this.blockDamageReduction = 0.5; // 50% damage reduction while blocking
+    this.blockDuration = 30;
+    this.blockCooldown = 0;
+    this.blockRechargeTime = 60;
+    this.blockDamageReduction = 0.5;
   }
 
   attack(gameState) {

@@ -13,14 +13,16 @@ import {
   ENEMY_SPEED,
   ATTACK_DMG,
   FRAME_DURATION,
-  GAME_STATES
+  GAME_STATES,
+  SCORE_VALUES,
+  ENEMY_TYPES,
+  DIFFICULTY_SETTINGS
 } from './constants.js';
 
 import Door from './classes/Door.js';
 import Player from './classes/Player.js';
 import Enemy from './classes/Enemy.js';
 import Pickup from './classes/Pickup.js';
-import Projectile from './classes/Projectile.js';
 
 class Game {
   constructor() {
@@ -28,6 +30,7 @@ class Game {
     this.debugMode = false;
     this.ctx = null;
     this.score = 0;
+    this.scoreMultiplier = 1.0; // Default score multiplier
     this.isRunning = false;
     this.player = null;
     this.enemies = [];
@@ -38,12 +41,14 @@ class Game {
     this.lastKeyFrame = null;
     this.currentFloor = 1;
     this.door = null;
+    this.difficulty = 'normal';
     this.currentScreen = 'splashScreen';
     this.screens = [
       'splashScreen',
       'gameScreen',
       'gameOverScreen',
-      'pauseScreen'
+      'pauseScreen',
+      'difficultyScreen'
     ];
     this.isPaused = false;
     this.keys = {
@@ -55,7 +60,8 @@ class Game {
       ArrowRight: false,
       ArrowUp: false,
       ArrowDown: false,
-      Space: false
+      Space: false,
+      Enter: false
     };
     this.lastMovementKey = null;
     this.sprites = {
@@ -68,13 +74,11 @@ class Game {
   }
 
   async init() {
-    // Create and setup canvas
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'gameCanvas';
     this.canvas.width = CANVAS_WIDTH;
     this.canvas.height = CANVAS_HEIGHT;
 
-    // Add canvas to game area
     const gameArea = document.getElementById('gameArea');
     if (!gameArea) {
       console.error('Game area element not found');
@@ -84,7 +88,6 @@ class Game {
 
     this.ctx = this.canvas.getContext('2d');
 
-    // Initialize game components
     this.player = new Player(
       [this.canvas.width / 2, this.canvas.height / 2],
       [PLAYER_SIZE, PLAYER_SIZE],
@@ -93,7 +96,6 @@ class Game {
 
     await this.loadSprites();
 
-    // Wait for DOM to be fully loaded before setting up event listeners
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () =>
         this.setupEventListeners()
@@ -151,24 +153,85 @@ class Game {
     });
   }
 
+  showDifficultyScreen() {
+    this.showScreen('difficultyScreen');
+  }
+
+  setDifficultyAndStart(difficulty) {
+    this.difficulty = difficulty;
+    this.resetGame();
+    this.applyDifficultySettings();
+    this.showScreen('gameScreen');
+    this.generateMap();
+    this.startLoop();
+  }
+
+  applyDifficultySettings() {
+    const settings = DIFFICULTY_SETTINGS[this.difficulty];
+    this.player.health = settings.playerHealth;
+    this.player.initialHealth = settings.playerHealth;
+    this.player.blockDamageReduction = settings.blockReduction;
+    this.scoreMultiplier = settings.scoreMultiplier;
+    this.healthDropRate = settings.healthDropRate;
+  }
+
   addEnemies(count) {
-    for (let i = 0; i < count; i++) {
+    const baseCount = count;
+    let actualCount;
+
+    // Get difficulty settings
+    const difficultyConfig =
+      DIFFICULTY_SETTINGS[this.difficulty] || DIFFICULTY_SETTINGS.normal;
+
+    // Calculate actual enemy count using difficulty settings
+    actualCount = Math.round(baseCount * difficultyConfig.enemyCountMod);
+
+    for (let i = 0; i < actualCount; i++) {
       const x = Math.random() * (this.canvas.width - TILE_SIZE);
       const y = Math.random() * (this.canvas.height - TILE_SIZE);
-      this.enemies.push(new Enemy([x, y], [ENEMY_SIZE, ENEMY_SIZE])); // Specify size
+
+      // Create enemy with difficulty-based modifiers
+      const enemy = new Enemy(
+        [x, y],
+        [ENEMY_SIZE, ENEMY_SIZE],
+        [0, 0], // initial velocity
+        undefined, // default health
+        'normal', // type
+        difficultyConfig.enemyMod, // health multiplier from difficulty settings
+        difficultyConfig.enemyMod // damage multiplier from difficulty settings
+      );
+
+      this.enemies.push(enemy);
     }
   }
 
+  handleEnemyDeath(enemy) {
+    const baseScore =
+      enemy.type === 'boss' ? SCORE_VALUES.BOSS_KILL : SCORE_VALUES.ENEMY_KILL;
+    this.score += Math.floor(baseScore * this.scoreMultiplier);
+    return false;
+  }
+
   addBoss() {
-    const x = Math.random() * (this.canvas.width - TILE_SIZE);
-    const y = Math.random() * (this.canvas.height - TILE_SIZE);
-    this.enemies.push(
-      new Enemy([x, y], [BOSS_SIZE, BOSS_SIZE], [0, 0], 100, 'boss')
+    const difficultyConfig =
+      DIFFICULTY_SETTINGS[this.difficulty] || DIFFICULTY_SETTINGS.normal;
+    const x = Math.random() * (this.canvas.width - BOSS_SIZE);
+    const y = Math.random() * (this.canvas.height - BOSS_SIZE);
+
+    const boss = new Enemy(
+      [x, y],
+      [BOSS_SIZE, BOSS_SIZE],
+      [0, 0],
+      ENEMY_TYPES.boss.baseHealth,
+      'boss',
+      difficultyConfig.bossHealthMod,
+      difficultyConfig.bossDamageMod
     );
+
+    this.enemies.push(boss);
   }
 
   async loadSprites() {
-    // Create colored rectangles for now - you can replace with actual sprite images
     this.sprites.player = this.createColoredSprite('#000000');
     this.sprites.enemy = this.createColoredSprite('#ff0000');
     this.sprites.wall = this.createColoredSprite('#808080');
@@ -297,45 +360,36 @@ class Game {
   }
 
   setupEventListeners() {
-    // Keyboard event listeners
     window.addEventListener('keydown', (e) => this.handleInput(e, true));
     window.addEventListener('keyup', (e) => this.handleInput(e, false));
 
-    // UI button listeners
+    // UI button listeners with new difficulty buttons
     const buttons = {
       toggleRunningBtn: () => this.togglePause(),
-      newGameBtn: () => this.resetGame(),
+      newGameBtn: () => this.showDifficultyScreen(),
       gameInfoBtn: () => this.showGameInstructions(),
-      startGameButton: () => this.startNewGame(),
-      playAgainButton: () => this.resetGame(),
+      startGameButton: () => this.showDifficultyScreen(),
+      playAgainButton: () => this.showDifficultyScreen(),
       quitButtonGameOver: () => this.quitGame(),
       resumeButton: () => this.resumeGame(),
-      resetButtonPause: () => this.quitGame()
+      resetButtonPause: () => this.quitGame(),
+      // New difficulty buttons
+      easyButton: () => this.setDifficultyAndStart('easy'),
+      normalButton: () => this.setDifficultyAndStart('normal'),
+      hardButton: () => this.setDifficultyAndStart('hard'),
+      backButton: () => this.showScreen('splashScreen')
     };
 
-    // Add event listeners with proper binding
     Object.entries(buttons).forEach(([id, handler]) => {
       const element = document.getElementById(id);
       if (element) {
-        // Bind the handler to maintain correct 'this' context
         element.addEventListener('click', handler.bind(this));
-      } else {
-        console.warn(`Button element ${id} not found`);
       }
     });
 
-    // Debug mode toggle
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'KeyV') {
-        this.debugMode = !this.debugMode;
-      }
-    });
-
-    // Pause game
-    window.addEventListener('keydown', (e) => {
-      if (e.code === 'KeyP' || e.code === 'Escape') {
-        this.togglePause();
-      }
+      if (e.code === 'KeyV') this.debugMode = !this.debugMode;
+      if (e.code === 'KeyP' || e.code === 'Escape') this.togglePause();
     });
   }
 
@@ -407,9 +461,8 @@ class Game {
       isKeyDown &&
       this.currentScreen === 'splashScreen' &&
       e.code === 'Enter'
-    ) {
-      this.resetGame();
-    }
+    )
+      this.showDifficultyScreen();
 
     // Handle pause screen shortcuts
     if (isKeyDown && this.isPaused === true) {
@@ -423,7 +476,7 @@ class Game {
     // Handle game over screen shortcuts
     if (isKeyDown && this.currentScreen === 'gameOverScreen') {
       if (e.code === 'Enter') {
-        this.resetGame();
+        this.showDifficultyScreen();
       } else if (e.code === 'Escape') {
         this.quitGame();
       }
@@ -577,24 +630,6 @@ class Game {
     return false;
   }
 
-  drawHealthBar(entity, x, y) {
-    const BAR_HEIGHT = 4;
-    const BAR_WIDTH = entity.dimensions[0];
-    const healthPercent = entity.health / entity.initialHealth;
-
-    // Calculate position - now using the entire height of the sprite
-    const barY = y + entity.spriteSize[1] - BAR_HEIGHT; // Use spriteSize for full height
-
-    // Draw background
-    this.ctx.fillStyle = '#555';
-    this.ctx.fillRect(x, barY, BAR_WIDTH, BAR_HEIGHT);
-
-    // Draw health (green to red based on health percentage)
-    const hue = healthPercent * 120;
-    this.ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-    this.ctx.fillRect(x, barY, BAR_WIDTH * healthPercent, BAR_HEIGHT);
-  }
-
   draw() {
     // Clear canvas
     this.ctx.fillStyle = '#000';
@@ -672,7 +707,6 @@ class Game {
 
     // Draw attack hitbox when attacking
     if (this.player.attackCooldown > 15) {
-      // Only show for first few frames of attack
       const hitbox = this.player.getAttackHitbox();
       this.ctx.strokeStyle = '#ff0';
       this.ctx.lineWidth = 2;
@@ -683,16 +717,24 @@ class Game {
       this.ctx.fillRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
     }
 
-    // Draw UI
+    // Draw UI elements
     this.ctx.fillStyle = '#fff';
     this.ctx.font = '20px Arial';
     this.ctx.fillText(`Health: ${this.player.health}`, 10, 30);
     this.ctx.fillText(`Score: ${this.score}`, 10, 60);
+    this.ctx.fillText(`Floor: ${this.currentFloor}`, 10, 90);
+    this.ctx.fillText(
+      `Difficulty: ${
+        this.difficulty.charAt(0).toUpperCase() + this.difficulty.slice(1)
+      } (${this.scoreMultiplier}x)`,
+      10,
+      120
+    );
 
     // Draw attack cooldown
     if (this.player.attackCooldown > 0) {
       this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      this.ctx.fillRect(10, 70, (this.player.attackCooldown / 20) * 100, 10);
+      this.ctx.fillRect(10, 130, (this.player.attackCooldown / 20) * 100, 10);
     }
 
     // Draw pickups
@@ -708,12 +750,13 @@ class Game {
 
     // Draw projectiles
     this.projectiles.forEach((projectile) => {
-      this.ctx.fillStyle = projectile.isEnemy ? '#ff0000' : '#00ff00';
+      const info = projectile.getDrawInfo();
+      this.ctx.fillStyle = info.color;
       this.ctx.fillRect(
-        projectile.position[0],
-        projectile.position[1],
-        projectile.dimensions[0],
-        projectile.dimensions[1]
+        info.position[0],
+        info.position[1],
+        info.dimensions[0],
+        info.dimensions[1]
       );
     });
 
@@ -728,11 +771,6 @@ class Game {
       );
     }
 
-    // Draw floor number
-    this.ctx.fillStyle = '#fff';
-    this.ctx.font = '20px Arial';
-    this.ctx.fillText(`Floor: ${this.currentFloor}`, 10, 90);
-
     // Debug: Draw door collision box
     if (this.debugMode && this.door) {
       const doorBox = this.door.getCollisionBox();
@@ -743,32 +781,43 @@ class Game {
     this.drawDebugInfo();
   }
 
+  drawHealthBar(entity, x, y) {
+    const BAR_HEIGHT = 4;
+    const BAR_WIDTH = entity.dimensions[0];
+    const healthPercent = entity.health / entity.initialHealth;
+
+    // Calculate position - now using the entire height of the sprite
+    const barY = y + entity.spriteSize[1] - BAR_HEIGHT;
+
+    // Draw background
+    this.ctx.fillStyle = '#555';
+    this.ctx.fillRect(x, barY, BAR_WIDTH, BAR_HEIGHT);
+
+    // Draw health (green to red based on health percentage)
+    const hue = healthPercent * 120;
+    this.ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+    this.ctx.fillRect(x, barY, BAR_WIDTH * healthPercent, BAR_HEIGHT);
+  }
+
   nextFloor() {
     this.currentFloor++;
-    this.score += 1000; // Bonus points for completing floor
-    this.door = null;
+    this.score += Math.floor(1000 * this.scoreMultiplier);
 
-    // Heal player slightly between floors
+    this.door = null;
     this.player.health = Math.min(
       this.player.health + 20,
       this.player.initialHealth
     );
 
-    // Reset player position
     this.player.position = [this.canvas.width / 2, this.canvas.height / 2];
-
-    // Clear existing enemies and projectiles
     this.enemies = [];
     this.projectiles = [];
 
-    // Generate new floor
     this.generateMap();
 
-    // Add enemies (increasing with floor number)
     const numEnemies = 3 + Math.floor(this.currentFloor / 2);
     this.addEnemies(numEnemies);
 
-    // Add boss every 5 floors
     if (this.currentFloor % 5 === 0) {
       this.addBoss();
     }
@@ -851,7 +900,7 @@ class Game {
     // Reset game state
     this.score = 0;
 
-    // Reset player position and health
+    // Reset player position and health (health will be adjusted by difficulty settings)
     if (!this.player) {
       this.player = new Player(
         [this.canvas.width / 2, this.canvas.height / 2],
@@ -859,7 +908,6 @@ class Game {
         [0, 0]
       );
     } else {
-      this.player.health = 100;
       this.player.position = [this.canvas.width / 2, this.canvas.height / 2];
     }
 
@@ -871,10 +919,10 @@ class Game {
     this.door = null;
 
     try {
-      // Generate new map with error handling
+      // Generate new map
       this.generateMap();
 
-      // Add enemies only if map generation was successful
+      // Add enemies (will be adjusted by difficulty settings)
       if (this.map && this.map.length > 0) {
         this.addEnemies(3);
       } else {
@@ -890,14 +938,6 @@ class Game {
     Object.keys(this.keys).forEach((key) => {
       this.keys[key] = false;
     });
-
-    // Make sure we're showing the game screen
-    this.showScreen('gameScreen');
-
-    // Ensure the game loop is running
-    if (!this.isRunning) {
-      this.startLoop();
-    }
   }
 
   checkFloorCleared() {
