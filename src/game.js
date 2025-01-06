@@ -205,13 +205,6 @@ class Game {
     }
   }
 
-  handleEnemyDeath(enemy) {
-    const baseScore =
-      enemy.type === 'boss' ? SCORE_VALUES.BOSS_KILL : SCORE_VALUES.ENEMY_KILL;
-    this.score += Math.floor(baseScore * this.scoreMultiplier);
-    return false;
-  }
-
   addBoss() {
     const difficultyConfig =
       DIFFICULTY_SETTINGS[this.difficulty] || DIFFICULTY_SETTINGS.normal;
